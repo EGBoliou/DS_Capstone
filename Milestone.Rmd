@@ -1,0 +1,213 @@
+---
+title: "Milestone"
+author: "EGB"
+date: "August 28, 2016"
+output: html_document
+---
+
+#Milestone Report
+This report will explain my exploratory analysis and goals for my future NLP algorithm and app.
+
+##Import and Combine Data
+
+```{r, warning=FALSE, results='hide'}
+knitr::opts_chunk$set(cache = TRUE)
+library(stringi)
+library(dplyr)
+
+blogText <- readLines("en_US.blogs.txt", skipNul = TRUE)
+newsText <- readLines("en_US.news.txt", skipNul = TRUE, warn = FALSE)
+twitterText <- readLines("en_US.twitter.txt", skipNul = TRUE)
+```
+
+##Word, Line Count statistics for each file
+
+```{r}
+
+blogw <- sapply(gregexpr("\\W+", blogText), length) + 1
+newsw <- sapply(gregexpr("\\W+", newsText), length) + 1
+twitterw <- sapply(gregexpr("\\W+", twitterText), length) + 1
+
+words <- c(sum(blogw), sum(newsw), sum(twitterw))
+lines <- c(length(blogText), length(newsText), length(twitterText))
+textSts <- as.data.frame(rbind(lines, words))
+names(textSts) <- c("blogs", "news", "twitter")
+textSts
+```
+
+#Most used words in each .txt file
+Per the line and word counts, I will use samples of corpus files instead of its entirety.
+
+```{r results='hide'}
+
+blogText <- blogText[1:1000]
+newsText <- newsText[1:1000]
+twitterText <- twitterText[1:1000]
+
+#Combining them into one sample
+allText  <- tolower(c(blogText, newsText, twitterText))
+
+#removing contractions
+allText <- gsub("let's","let us",allText)
+allText <- gsub("'s","",allText)
+allText <- gsub("'d"," would",allText)
+allText <- gsub("'ve"," have",allText)
+allText <- gsub("'t"," not",allText)
+allText <- gsub("'ll"," will",allText)
+allText <- gsub("'m"," am",allText)
+allText <- gsub("'re"," are",allText)
+```
+
+#Looking for Most-Used words
+
+```{r}
+
+UGRAM <- stri_match_all_regex(allText,"([ ,.!?\"(]|^)(?=([a-zA-Z]+'?[a-zA-Z]*))")
+
+x <- as.character(c())
+for (i in 1:length(UGRAM)){
+  lw <- length(UGRAM[[i]][,3])
+    x <- c(x, UGRAM[[i]][,3])
+}  
+
+x <- unique(x)
+y <- is.na(x)
+x <- x[y==FALSE]
+
+k = 1
+y <- as.character(c())
+for (i in 1:length(x)){
+  if (stri_length(x[i]) > 2){
+    y[k] <- x[i]
+    k = k+1
+  }
+}
+
+x <- unique(y)
+
+xx <- as.numeric(c())
+for (i in 1:length(x)){ 
+   y <- grep(x[i],allText, fixed = TRUE)
+    xx[i] <- length(y)
+}
+
+```
+
+#Creating Data Frames to tabulate
+
+```{r}
+
+x_wcount <- as.data.frame(cbind(x,xx))
+names(x_wcount) <- c("Word", "count")
+x_wcount$Word <- as.character(x_wcount$Word)
+x_wcount$count <- as.numeric(as.character(x_wcount$count))
+x_wcount <- arrange(x_wcount, desc(count))
+
+```
+
+#Plots of words according to most appearances
+
+```{r, echo=FALSE}
+
+par(las = 2, xaxt = "n")
+barplot(x_wcount$count[25:1], main = "Words with most appearances in sample", col = "navy", horiz = TRUE, names.arg=x_wcount$Word[25:1])
+```
+
+#Looking for Most-Used word pairs
+
+```{r}
+TGRAM <- stri_match_all_regex(allText,"([ ,.!?\"(]|^)(?=([a-zA-Z]+'?[a-zA-Z]* [a-zA-Z]+'?[a-zA-Z]*))")
+
+x2 <- as.character(c())
+for (i in 1:length(TGRAM)){
+  lw <- length(TGRAM[[i]][,3])
+    x2 <- c(x2, TGRAM[[i]][,3])
+}  
+
+
+x2 <- unique(x2)
+y <- is.na(x2)
+x2 <- x2[y==FALSE]
+
+k = 1
+for (i in 1:length(x2)){
+  if (as.numeric(stri_locate_first(x2[i], regex = " ")[1,1]) > 2){
+    y[k] <- x2[i]
+    k = k+1
+  }
+}
+
+x2 <- unique(y)
+
+xx2 <- as.character(c())
+for (i in 1:length(x2)){ 
+   y2 <- grep(x2[i],allText, fixed = TRUE)
+    xx2[i] <- length(y2)
+}
+
+```
+
+#Creating Data Frames to tabulate word pairs
+
+```{r}
+px_wcount <- as.data.frame(cbind(x2,xx2))
+names(px_wcount) <- c("Word", "count")
+px_wcount$Word <- as.character(px_wcount$Word)
+px_wcount$count <- as.numeric(as.character(px_wcount$count))
+px_wcount <- arrange(px_wcount, desc(count))
+```
+
+#Plots of word pairs according to most appearances
+
+```{r, echo=FALSE}
+
+par(las = 2, xaxt = "n")
+barplot(px_wcount$count[25:1], main = "Word pairs with most appearances in sample", col = "green", horiz = TRUE, names.arg=px_wcount$Word[25:1])
+```
+
+#Looking for Most-Used word triplicates
+
+```{r}
+THGRAM <- stri_match_all_regex(allText,"([ ,.!?\"(]|^)(?=([a-zA-Z]+'?[a-zA-Z]* [a-zA-Z]+'?[a-zA-Z]* [a-zA-Z]+'?[a-zA-Z]*))")
+
+x3 <- as.character(c())
+for (i in 1:length(THGRAM)){
+  lw <- length(THGRAM[[i]][,3])
+    x3 <- c(x3, THGRAM[[i]][,3])
+}  
+
+x3 <- unique(x3)
+
+xx3 <- as.character(c())
+for (i in 1:length(x3)){ 
+   y3 <- grep(x3[i],allText, fixed = TRUE)
+    xx3[i] <- length(y3)
+}
+
+
+y <- is.na(x3)
+x3 <- x3[y==FALSE]
+xx3 <- xx3[y==FALSE]
+
+```
+
+#Creating Data Frames to tabulate word triplicates
+
+```{r}
+px3_wcount <- as.data.frame(cbind(x3,xx3))
+names(px3_wcount) <- c("Word", "count")
+px3_wcount$Word <- as.character(px3_wcount$Word)
+px3_wcount$count <- as.numeric(as.character(px3_wcount$count))
+px3_wcount <- arrange(px3_wcount, desc(count))
+```
+
+#Plots of word triplicates according to most appearances
+
+```{r, echo=FALSE}
+
+par(las = 2, xaxt = "n", mar = c(5,7,4,2))
+barplot(px3_wcount$count[25:1], main = "Word triplicates with most appearances in sample", col = "magenta", horiz = TRUE, names.arg=px3_wcount$Word[25:1])
+```
+
+#Subsequent Plan
+I intend to use this information to help with a Katz's back-off model.  I will also research ways to not need so much memory and why the stringi and quanteda packages result in single letter words.  I had issues in developing this report and realize I will have issues with my app if alternate solutions are not found.
